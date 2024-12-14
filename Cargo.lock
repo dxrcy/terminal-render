@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "terminal-render"
+name = "termrender"
 version = "0.1.0"
