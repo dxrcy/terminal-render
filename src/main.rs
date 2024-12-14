@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+use std::fmt;
 use std::ops;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -95,14 +97,32 @@ impl Circle {
 
 impl Drawable for Circle {
     fn draw(&self) {
-        let pixel = |point| {
+        let pixel = |point: Point<i32>| {
+            let coord: Point<f32> = (point - self.origin).into();
+            let angle = (coord.y).atan2(coord.x / 2.0);
+            let ch = get_angle_character(angle);
+
             terminal::cursor::move_to(point);
-            print!("x");
+            print!("{}", ch);
         };
 
         let ry = self.radius as f32;
         midpoint_ellipse(self.origin, ry * 2.0, ry, pixel);
+        // panic!();
     }
+}
+
+fn get_angle_character(angle: f32) -> char {
+    use symbol::ANGLE_CHARS;
+
+    /// Adjust angle to align properly
+    const OFFSET: f32 = 1.0 + 1.0 / ANGLE_CHARS.len() as f32;
+
+    // Normalize angle to [0, 2*pi)
+    let adjusted = (angle + PI * OFFSET) % (PI * 2.0);
+
+    let index = adjusted / PI / 2.0 * ANGLE_CHARS.len() as f32;
+    ANGLE_CHARS[index as usize]
 }
 
 fn midpoint_ellipse<F>(origin: Point<i32>, rx: f32, ry: f32, pixel: F)
@@ -171,6 +191,15 @@ impl<T> Point<T> {
     }
 }
 
+impl<T> fmt::Display for Point<T>
+where
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
 impl<T, U> From<(U, U)> for Point<T>
 where
     Point<T>: From<Point<U>>,
@@ -180,6 +209,15 @@ where
         Self {
             x: value.0.into(),
             y: value.1.into(),
+        }
+    }
+}
+
+impl From<Point<i32>> for Point<f32> {
+    fn from(value: Point<i32>) -> Self {
+        Self {
+            x: value.x as f32,
+            y: value.y as f32,
         }
     }
 }
@@ -196,6 +234,22 @@ where
         Self {
             x: self.x + other.x,
             y: self.y + other.y,
+        }
+    }
+}
+
+impl<T, U> ops::Sub<U> for Point<T>
+where
+    Point<T>: From<U>,
+    T: ops::Sub<Output = T>,
+{
+    type Output = Point<T>;
+
+    fn sub(self, other: U) -> Self::Output {
+        let other: Point<T> = other.into();
+        Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
         }
     }
 }
@@ -254,6 +308,11 @@ mod symbol {
     pub const LINE_DOWN_LEFT: char = '┐';
     pub const LINE_UP_RIGHT: char = '└';
     pub const LINE_UP_LEFT: char = '┘';
+
+    // pub const ANGLE_CHARS: &[char]pub const ANGLE_CHARS: &[char] = &[ '|', '.', '/', '.', '-', '.', '\\', '.', '|', '.', '/', '.', '-', '.', '\\', '.', ];
+    // pub const ANGLE_CHARS: &[char] = &['|', '/', '-', '\\', '|', '/', '-', '\\'];
+    // pub const ANGLE_CHARS: &[char] = &['|', '·', '-', '·', '|', '·', '-', '·'];
+    pub const ANGLE_CHARS: &[char] = &['|', '+', '-', '+', '|', '+', '-', '+'];
 }
 
 mod terminal {
