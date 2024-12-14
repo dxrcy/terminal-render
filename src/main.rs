@@ -48,15 +48,15 @@ impl App {
         rect.draw();
 
         let origin = Point::new(40, 20);
-        let radius = self.frame_number as i32 % 20;
+        let radius = self.frame_number as i32 % 10 + 10;
 
-        // let rect = Rect::new(
-        //     origin.x - radius * 2 - 1,
-        //     origin.y - radius - 1,
-        //     radius as u32 * 4 + 2,
-        //     radius as u32 * 2 + 2,
-        // );
-        // rect.draw();
+        let rect = Rect::new(
+            origin.x - radius * 2 - 1,
+            origin.y - radius - 1,
+            radius as u32 * 4 + 2,
+            radius as u32 * 2 + 2,
+        );
+        rect.draw();
 
         let circle = Circle::new(origin, radius as u32);
         circle.draw();
@@ -94,33 +94,74 @@ impl Circle {
 
 impl Drawable for Circle {
     fn draw(&self) {
-        let r = self.radius as i32;
-        let d = r * 2;
-        let sx = self.origin.x - r * 2;
-        let sy = self.origin.y - r;
+        let ry = self.radius as f32;
+        let rx = ry * 2.0;
 
-        // Discusting hack!
-        let pred = |x: i32, y: i32| {
-            let y = y as f32 + 0.0;
-            let x = x as f32 / 2.0 + 0.0;
-            let r = r as f32;
-            let r2 = (x - r).powi(2) + (y - r).powi(2);
-            r2 < (r + 0.5).powi(2) && r2 > (r - 0.5).powi(2)
+        let ox = self.origin.x as f32;
+        let oy = self.origin.y as f32;
+
+        let put = |x: f32, y: f32| {
+            terminal::cursor::move_to((x as i32, y as i32));
+            print!("x");
         };
 
-        for y in 0..d + 1 {
-            terminal::cursor::move_to((sx, sy + y));
+        let f = |x: f32, y: f32| {
+            ry.powi(2) * x.powi(2) + rx.powi(2) * y.powi(2) - rx.powi(2) * ry.powi(2)
+        };
 
-            for x in 0..d * 2 + 1 {
-                if pred(x, y) {
-                    print!(".");
-                } else {
-                    terminal::cursor::move_right(1);
-                }
+        let mut x = 0.0;
+        let mut y = -ry;
+
+        while x < -y {
+            let ym = y + 0.5;
+
+            if f(x, ym) < 0.0 {
+                y += 1.0;
             }
+
+            put(ox + x, oy + y);
+            put(ox - x, oy + y);
+            put(ox + x, oy - y);
+            put(ox - x, oy - y);
+            put(ox + y, oy + x);
+            put(ox - y, oy + x);
+            put(ox + y, oy - x);
+            put(ox - y, oy - x);
+
+            x += 1.0;
         }
     }
 }
+
+// impl Drawable for Circle {
+//     fn draw(&self) {
+//         let r = self.radius as i32;
+//         let d = r * 2;
+//         let sx = self.origin.x - r * 2;
+//         let sy = self.origin.y - r;
+//
+//         // Discusting hack!
+//         let pred = |x: i32, y: i32| {
+//             let y = y as f32 + 0.0;
+//             let x = x as f32 / 2.0 + 0.0;
+//             let r = r as f32;
+//             let r2 = (x - r).powi(2) + (y - r).powi(2);
+//             r2 < (r + 0.5).powi(2) && r2 > (r - 0.5).powi(2)
+//         };
+//
+//         for y in 0..d + 1 {
+//             terminal::cursor::move_to((sx, sy + y));
+//
+//             for x in 0..d * 2 + 1 {
+//                 if pred(x, y) {
+//                     print!(".");
+//                 } else {
+//                     terminal::cursor::move_right(1);
+//                 }
+//             }
+//         }
+//     }
+// }
 
 #[derive(Clone, Copy, Debug)]
 struct Point<T> {
