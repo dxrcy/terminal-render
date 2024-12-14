@@ -62,6 +62,19 @@ impl Circle {
 
 impl Drawable for Circle {
     fn draw(&self) {
+        if self.radius < 2 {
+            terminal::cursor::move_to(self.origin);
+            print!(
+                "{}",
+                if self.radius < 1 {
+                    symbol::SMALLEST_CIRCLE
+                } else {
+                    symbol::SMALL_CIRCLE
+                }
+            );
+            return;
+        }
+
         let pixel = |point: Point<i32>| {
             let coord: Point<f32> = (point - self.origin).into();
             let angle = (coord.y).atan2(coord.x / 2.0);
@@ -71,7 +84,7 @@ impl Drawable for Circle {
             print!("{}", ch);
         };
 
-        let ry = self.radius as f32;
+        let ry = self.radius as f32 - 1.0;
         midpoint_ellipse(self.origin, ry * 2.0, ry, pixel);
         // panic!();
     }

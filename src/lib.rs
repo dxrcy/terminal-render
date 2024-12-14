@@ -50,6 +50,9 @@ pub mod symbol {
     // pub const ANGLE_CHARS: &[char] = &['|', '/', '-', '\\', '|', '/', '-', '\\'];
     // pub const ANGLE_CHARS: &[char] = &['|', '·', '-', '·', '|', '·', '-', '·'];
     pub const ANGLE_CHARS: &[char] = &['|', '+', '-', '+', '|', '+', '-', '+'];
+
+    pub const SMALL_CIRCLE: char = 'o';
+    pub const SMALLEST_CIRCLE: char = '.';
 }
 
 pub mod terminal {
