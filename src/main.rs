@@ -1,3 +1,4 @@
+use std::ops;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -50,13 +51,13 @@ impl App {
         let origin = Point::new(40, 20);
         let radius = self.frame_number as i32 % 10 + 10;
 
-        let rect = Rect::new(
-            origin.x - radius * 2 - 1,
-            origin.y - radius - 1,
-            radius as u32 * 4 + 2,
-            radius as u32 * 2 + 2,
-        );
-        rect.draw();
+        // let rect = Rect::new(
+        //     origin.x - radius * 2 - 1,
+        //     origin.y - radius - 1,
+        //     radius as u32 * 4 + 2,
+        //     radius as u32 * 2 + 2,
+        // );
+        // rect.draw();
 
         let circle = Circle::new(origin, radius as u32);
         circle.draw();
@@ -94,74 +95,69 @@ impl Circle {
 
 impl Drawable for Circle {
     fn draw(&self) {
-        let ry = self.radius as f32;
-        let rx = ry * 2.0;
-
-        let ox = self.origin.x as f32;
-        let oy = self.origin.y as f32;
-
-        let put = |x: f32, y: f32| {
-            terminal::cursor::move_to((x as i32, y as i32));
+        let pixel = |point| {
+            terminal::cursor::move_to(point);
             print!("x");
         };
 
-        let f = |x: f32, y: f32| {
-            ry.powi(2) * x.powi(2) + rx.powi(2) * y.powi(2) - rx.powi(2) * ry.powi(2)
-        };
-
-        let mut x = 0.0;
-        let mut y = -ry;
-
-        while x < -y {
-            let ym = y + 0.5;
-
-            if f(x, ym) < 0.0 {
-                y += 1.0;
-            }
-
-            put(ox + x, oy + y);
-            put(ox - x, oy + y);
-            put(ox + x, oy - y);
-            put(ox - x, oy - y);
-            put(ox + y, oy + x);
-            put(ox - y, oy + x);
-            put(ox + y, oy - x);
-            put(ox - y, oy - x);
-
-            x += 1.0;
-        }
+        let ry = self.radius as f32;
+        midpoint_ellipse(self.origin, ry * 2.0, ry, pixel);
     }
 }
 
-// impl Drawable for Circle {
-//     fn draw(&self) {
-//         let r = self.radius as i32;
-//         let d = r * 2;
-//         let sx = self.origin.x - r * 2;
-//         let sy = self.origin.y - r;
-//
-//         // Discusting hack!
-//         let pred = |x: i32, y: i32| {
-//             let y = y as f32 + 0.0;
-//             let x = x as f32 / 2.0 + 0.0;
-//             let r = r as f32;
-//             let r2 = (x - r).powi(2) + (y - r).powi(2);
-//             r2 < (r + 0.5).powi(2) && r2 > (r - 0.5).powi(2)
-//         };
-//
-//         for y in 0..d + 1 {
-//             terminal::cursor::move_to((sx, sy + y));
-//
-//             for x in 0..d * 2 + 1 {
-//                 if pred(x, y) {
-//                     print!(".");
-//                 } else {
-//                     terminal::cursor::move_right(1);
-//                 }
-//             }
-//         }
-//     }
-// }
+fn midpoint_ellipse<F>(origin: Point<i32>, rx: f32, ry: f32, pixel: F)
+where
+    F: Fn(Point<i32>) -> (),
+{
+    let pixels = |x: f32, y: f32| {
+        [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+            .iter()
+            .for_each(|(sx, sy)| {
+                pixel(origin + (x as i32 * sx, y as i32 * sy));
+            })
+    };
+
+    let mut x = 0.0;
+    let mut y = ry;
+
+    let mut dx = 0.0;
+    let mut dy = 2.0 * ry * rx.powi(2);
+
+    let mut d1 = ry.powi(2) + rx.powi(2) * (-ry + 0.25);
+
+    while dx < dy {
+        pixels(x, y);
+        x += 1.0;
+
+        if d1 < 0.0 {
+            dx += 2.0 * ry.powi(2);
+            d1 += dx + 2.0 * ry.powi(2);
+        } else {
+            y -= 1.0;
+            dx += 2.0 * ry.powi(2);
+            dy -= 2.0 * rx.powi(2);
+            d1 += dx - dy + ry.powi(2);
+        }
+    }
+
+    let mut d2 =
+        ry.powi(2) * (x + 0.5).powi(2) + rx.powi(2) * (y - 1.0).powi(2) - (rx * ry).powi(2);
+
+    while y >= 0.0 {
+        pixels(x, y);
+        y -= 1.0;
+
+        if d2 > 0.0 {
+            dy -= 2.0 * rx.powi(2);
+            d2 += rx.powi(2) - dy;
+        } else {
+            x += 1.0;
+            dx += 2.0 * ry.powi(2);
+            dy -= 2.0 * rx.powi(2);
+            d2 += dx - dy + rx.powi(2);
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 struct Point<T> {
@@ -175,15 +171,31 @@ impl<T> Point<T> {
     }
 }
 
-impl<T, U> From<(T, T)> for Point<U>
+impl<T, U> From<(U, U)> for Point<T>
 where
-    Point<U>: From<Point<T>>,
-    U: From<T>,
+    Point<T>: From<Point<U>>,
+    T: From<U>,
 {
-    fn from(value: (T, T)) -> Self {
+    fn from(value: (U, U)) -> Self {
         Self {
             x: value.0.into(),
             y: value.1.into(),
+        }
+    }
+}
+
+impl<T, U> ops::Add<U> for Point<T>
+where
+    Point<T>: From<U>,
+    T: ops::Add<Output = T>,
+{
+    type Output = Point<T>;
+
+    fn add(self, other: U) -> Self::Output {
+        let other: Point<T> = other.into();
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
         }
     }
 }
